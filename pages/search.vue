@@ -80,28 +80,35 @@
               Loaders
             </h3>
             <SearchFilter
-              v-for="loader in $tag.loaders.filter((x) => {
-                if (
-                  projectType === 'mod' &&
-                  !isPlugins &&
-                  !showAllLoaders &&
-                  x.name !== 'forge' &&
-                  x.name !== 'fabric' &&
-                  x.name !== 'quilt'
-                ) {
-                  return false
-                }
+              v-for="loader in $tag.loaders
+                .filter((x) => {
+                  if (
+                    projectType === 'mod' &&
+                    !isPlugins &&
+                    !showAllLoaders &&
+                    x.name !== 'forge' &&
+                    x.name !== 'fabric' &&
+                    x.name !== 'quilt'
+                  ) {
+                    return false
+                  }
 
-                if (projectType === 'mod' && showAllLoaders) {
-                  return $tag.loaderData.modLoaders.includes(x.name)
-                }
+                  if (projectType === 'mod' && showAllLoaders) {
+                    return $tag.loaderData.modLoaders.includes(x.name)
+                  }
 
-                return isPlugins
-                  ? $tag.loaderData.pluginLoaders.includes(x.name)
-                  : x.supported_project_types.includes(projectType)
-              })"
+                  return isPlugins
+                    ? $tag.loaderData.pluginLoaders.includes(x.name)
+                    : x.supported_project_types.includes(projectType)
+                })
+                .sort((a, b) => {
+                  return loaderSortIndex
+                    .get(a.name)
+                    .localeCompare(loaderSortIndex.get(b.name))
+                })"
               :key="loader.name"
               ref="loaderFilters"
+              :class="'filter-depth-' + $getUpstreamLoaderDepth(loader.name, 0)"
               :active-filters="orFacets"
               :display-name="$formatCategory(loader.name)"
               :facet-name="`categories:${loader.name}`"
@@ -130,11 +137,18 @@
               Proxies
             </h3>
             <SearchFilter
-              v-for="loader in $tag.loaders.filter((x) =>
-                $tag.loaderData.pluginPlatformLoaders.includes(x.name)
-              )"
+              v-for="loader in $tag.loaders
+                .filter((x) =>
+                  $tag.loaderData.pluginPlatformLoaders.includes(x.name)
+                )
+                .sort((a, b) => {
+                  return loaderSortIndex
+                    .get(a.name)
+                    .localeCompare(loaderSortIndex.get(b.name))
+                })"
               :key="loader.name"
               ref="platformFilters"
+              :class="'filter-depth-' + $getUpstreamLoaderDepth(loader.name, 0)"
               :active-filters="orFacets"
               :display-name="$formatCategory(loader.name)"
               :facet-name="`categories:${loader.name}`"
@@ -487,6 +501,11 @@ export default {
 
       return newVals
     },
+    loaderSortIndex() {
+      return this.$getLoaderSortIndices(
+        this.$tag.loaders.map((loader) => loader.name)
+      )
+    },
   },
   watch: {
     '$route.path': {
@@ -553,22 +572,18 @@ export default {
       if (index !== -1) {
         this.orFacets.splice(index, 1)
       } else {
-        if (elementName === 'categories:purpur') {
-          this.orFacets.push('categories:paper')
-          this.orFacets.push('categories:spigot')
-          this.orFacets.push('categories:bukkit')
-        } else if (elementName === 'categories:paper') {
-          this.orFacets.push('categories:spigot')
-          this.orFacets.push('categories:bukkit')
-        } else if (elementName === 'categories:spigot') {
-          this.orFacets.push('categories:bukkit')
-        } else if (elementName === 'categories:waterfall') {
-          this.orFacets.push('categories:bungeecord')
-        }
-        this.orFacets.push(elementName)
+        this.pushUpstreamLoaders(elementName.replace('categories:', ''))
       }
 
       if (!doNotSendRequest) await this.onSearchChange(1)
+    },
+    pushUpstreamLoaders(loader) {
+      this.orFacets.push('categories:' + loader)
+      const upstream = this.$getUpstreamLoader(loader)
+      this.orFacets.push()
+      if (upstream != null) {
+        this.pushUpstreamLoaders(upstream)
+      }
     },
     async toggleEnv(environment, sendRequest) {
       const index = this.selectedEnvironments.indexOf(environment)
@@ -889,5 +904,25 @@ export default {
     flex-wrap: nowrap !important;
     flex-direction: row !important;
   }
+}
+
+.filter-depth-1 {
+  margin-left: 1rem;
+}
+
+.filter-depth-2 {
+  margin-left: 2rem;
+}
+
+.filter-depth-3 {
+  margin-left: 3rem;
+}
+
+.filter-depth-4 {
+  margin-left: 4rem;
+}
+
+.filter-depth-5 {
+  margin-left: 5rem;
 }
 </style>

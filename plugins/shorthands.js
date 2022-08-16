@@ -23,6 +23,9 @@ export default (ctx, inject) => {
   inject('formatProjectType', formatProjectType)
   inject('formatCategory', formatCategory)
   inject('formatCategoryHeader', formatCategoryHeader)
+  inject('getUpstreamLoader', getUpstreamLoader)
+  inject('getUpstreamLoaderDepth', getUpstreamLoaderDepth)
+  inject('getLoaderSortIndices', getLoaderSortIndices)
   inject('computeVersions', (versions) => {
     const versionsMap = {}
 
@@ -296,4 +299,43 @@ export const formatVersions = (versionArray, store) => {
   }
 
   return output.join(', ')
+}
+
+export const getUpstreamLoader = (loader) => {
+  if (loader === 'quilt') {
+    return 'fabric'
+  } else if (loader === 'spigot') {
+    return 'bukkit'
+  } else if (loader === 'paper') {
+    return 'spigot'
+  } else if (loader === 'purpur') {
+    return 'paper'
+  } else if (loader === 'waterfall') {
+    return 'bungeecord'
+  }
+  return null
+}
+
+export const getUpstreamLoaderDepth = (loader, count) => {
+  const upstream = getUpstreamLoader(loader)
+  if (upstream != null) {
+    return getUpstreamLoaderDepth(upstream, count + 1)
+  }
+  return count
+}
+
+function getLoaderSortIndex(currentLoader, loaders, sortIndices, prefix) {
+  for (const loader of loaders.filter(
+    (l) => getUpstreamLoader(l) === currentLoader
+  )) {
+    const newPrefix = prefix + (prefix === '' ? '' : '-') + loader
+    sortIndices.set(loader, newPrefix)
+    sortIndices = getLoaderSortIndex(loader, loaders, sortIndices, newPrefix)
+  }
+  return sortIndices
+}
+
+export const getLoaderSortIndices = (loaders) => {
+  const sortIndices = new Map()
+  return getLoaderSortIndex(null, loaders, sortIndices, '')
 }
