@@ -2,220 +2,237 @@
   <div>
     <ModalCreation ref="modal_creation" />
     <ModalReport ref="modal_report" :item-id="user.id" item-type="user" />
-    <div class="user-header-wrapper">
-      <div class="user-header">
-        <Avatar
-          :src="previewImage ? previewImage : user.avatar_url"
-          size="lg"
-          circle
-          :alt="user.username"
-        />
-        <h1 class="username">{{ user.username }}</h1>
-      </div>
-    </div>
-    <div class="normal-page">
-      <div class="normal-page__sidebar">
-        <aside class="card sidebar">
-          <h1 class="mobile-username">{{ user.username }}</h1>
-          <div class="card__overlay">
-            <FileInput
-              v-if="isEditing"
-              :max-size="262144"
-              :show-icon="true"
-              accept="image/png,image/jpeg,image/gif,image/webp"
-              class="choose-image"
-              prompt="Upload avatar"
-              @change="showPreviewImage"
-            />
-            <button
-              v-else-if="$auth.user && $auth.user.id === user.id"
-              class="iconified-button"
-              @click="isEditing = true"
-            >
-              <EditIcon />
-              Edit
-            </button>
-            <button
-              v-else-if="$auth.user"
-              class="iconified-button"
-              @click="$refs.modal_report.show()"
-            >
-              <ReportIcon aria-hidden="true" />
-              Report
-            </button>
-            <a v-else class="iconified-button" :href="authUrl">
-              <ReportIcon aria-hidden="true" />
-              Report
-            </a>
-          </div>
-          <template v-if="isEditing">
-            <div class="inputs">
-              <label><h3>Username</h3></label>
-              <input v-model="user.username" maxlength="39" type="text" />
-              <label><h3>Bio</h3></label>
-              <div class="textarea-wrapper">
-                <textarea v-model="user.bio" maxlength="160"></textarea>
-              </div>
-              <label><h3>Private Email</h3></label>
-              <span>Only visible to moderators.</span>
-              <input v-model="user.email" maxlength="2048" type="email" />
-            </div>
-            <div class="button-group">
-              <button
-                class="iconified-button"
-                @click="
-                  isEditing = false
-                  user = JSON.parse(JSON.stringify($auth.user))
-                  previewImage = null
-                  icon = null
-                "
-              >
-                <CrossIcon /> Cancel
-              </button>
-              <button
-                class="iconified-button brand-button"
-                @click="saveChanges"
-              >
-                <SaveIcon /> Save
-              </button>
-            </div>
-          </template>
-          <template v-else>
-            <div class="sidebar__item">
-              <Badge v-if="user.role === 'admin'" type="admin" color="red" />
-              <Badge
-                v-else-if="user.role === 'moderator'"
-                type="moderator"
-                color="yellow"
-              />
-              <Badge v-else type="developer" color="green" />
-            </div>
-            <span v-if="user.bio" class="sidebar__item bio">{{
-              user.bio
-            }}</span>
-            <hr class="card-divider" />
-            <div class="primary-stat">
-              <DownloadIcon class="primary-stat__icon" aria-hidden="true" />
-              <div class="primary-stat__text">
-                <span class="primary-stat__counter">{{ sumDownloads() }}</span>
-                <span class="primary-stat__label">downloads</span>
-              </div>
-            </div>
-            <div class="primary-stat">
-              <HeartIcon class="primary-stat__icon" aria-hidden="true" />
-              <div class="primary-stat__text">
-                <span class="primary-stat__counter">{{ sumFollows() }}</span>
-                <span class="primary-stat__label">followers of projects</span>
-              </div>
-            </div>
-            <div class="stats-block__item secondary-stat">
-              <SunriseIcon class="secondary-stat__icon" aria-hidden="true" />
-              <span
-                v-tooltip="
-                  $dayjs(user.created).format('MMMM D, YYYY [at] h:mm:ss A')
-                "
-                class="secondary-stat__text date"
-              >
-                Joined {{ $dayjs(user.created).fromNow() }}
-              </span>
-            </div>
-            <hr class="card-divider" />
-            <div class="stats-block__item secondary-stat">
-              <UserIcon class="secondary-stat__icon" aria-hidden="true" />
-              <span class="secondary-stat__text">
-                User ID: <CopyCode :text="user.id" />
-              </span>
-            </div>
-            <a
-              :href="githubUrl"
-              target="_blank"
-              class="sidebar__item github-button iconified-button"
-            >
-              <GitHubIcon aria-hidden="true" />
-              View GitHub profile
-            </a>
-          </template>
-        </aside>
-      </div>
-      <div class="normal-page__content">
-        <nav class="card user-navigation">
-          <NavRow
-            query="type"
-            :links="[
-              {
-                label: 'all',
-                href: '',
-              },
-              ...projectTypes.map((x) => {
-                return {
-                  label: x === 'resourcepack' ? 'Resource Packs' : x + 's',
-                  href: x,
-                }
-              }),
-            ]"
+    <div class="stacked-page">
+      <div
+        class="banner-header-outer card"
+        :class="{ decorated: decorated }"
+        :style="
+          decorated
+            ? 'background: ' +
+              accentColor1 +
+              ';background: linear-gradient(150deg, ' +
+              accentColor1 +
+              ' 0%, ' +
+              accentColor2 +
+              ' 100%);'
+            : ''
+        "
+      >
+        <div class="banner-header-inner">
+          <img
+            v-if="decorated && bannerImageUrl"
+            class="header-banner"
+            :src="bannerImageUrl"
+            aria-hidden="true"
+            alt="Decorative banner image"
           />
-          <button
-            v-if="$auth.user && $auth.user.id === user.id"
-            class="iconified-button brand-button"
-            @click="$refs.modal_creation.show()"
-          >
-            <PlusIcon />
-            Create a project
-          </button>
-        </nav>
-        <Advertisement
-          type="banner"
-          small-screen="square"
-          ethical-ads-small
-          ethical-ads-big
-        />
-        <div v-if="projects.length > 0">
-          <ProjectCard
-            v-for="project in $route.query.type !== undefined
-              ? projects.filter((x) => x.project_type === $route.query.type)
-              : projects"
-            :id="project.slug || project.id"
-            :key="project.id"
-            :name="project.title"
-            :description="project.description"
-            :created-at="project.published"
-            :updated-at="project.updated"
-            :downloads="project.downloads.toString()"
-            :follows="project.followers.toString()"
-            :icon-url="project.icon_url"
-            :categories="project.categories"
-            :client-side="project.client_side"
-            :server-side="project.server_side"
-            :status="
-              $auth.user &&
-              ($auth.user.role === 'admin' || $auth.user.role === 'moderator')
-                ? project.status
-                : null
-            "
-            :type="project.project_type"
-          >
-            <nuxt-link
-              v-if="$auth.user && $auth.user.id === user.id"
-              class="iconified-button"
-              :to="`/${project.project_type}/${
-                project.slug ? project.slug : project.id
-              }/settings`"
-            >
-              <SettingsIcon />
-              Settings
-            </nuxt-link>
-          </ProjectCard>
+          <div class="header-content">
+            <Avatar
+              :src="previewImage ? previewImage : user.avatar_url"
+              size="md"
+              circle
+              :alt="user.username"
+            />
+            <div class="title">
+              <h1 class="username">{{ user.username }}</h1>
+              <div class="role"><ModrinthIcon />Modrinth Team</div>
+            </div>
+          </div>
         </div>
-        <div v-else class="error">
-          <UpToDate class="icon" /><br />
-          <span v-if="$auth.user && $auth.user.id === user.id" class="text">
-            You don't have any projects.<br />
-            Would you like to
-            <a class="link" @click.prevent="$refs.modal_creation.show()">
-              create one </a
-            >?
-          </span>
-          <span v-else class="text">This user has no projects!</span>
+      </div>
+      <div class="normal-page">
+        <div class="normal-page__sidebar">
+          <aside class="card sidebar">
+            <div class="card__overlay" style="display: none">
+              <FileInput
+                v-if="isEditing"
+                :max-size="262144"
+                :show-icon="true"
+                accept="image/png,image/jpeg,image/gif,image/webp"
+                class="choose-image"
+                prompt="Upload avatar"
+                @change="showPreviewImage"
+              />
+              <button
+                v-else-if="$auth.user && $auth.user.id === user.id"
+                class="iconified-button"
+                @click="isEditing = true"
+              >
+                <EditIcon />
+                Edit
+              </button>
+              <button
+                v-else-if="$auth.user"
+                class="iconified-button"
+                @click="$refs.modal_report.show()"
+              >
+                <ReportIcon aria-hidden="true" />
+                Report
+              </button>
+              <a v-else class="iconified-button" :href="authUrl">
+                <ReportIcon aria-hidden="true" />
+                Report
+              </a>
+            </div>
+            <template v-if="isEditing">
+              <div class="inputs">
+                <label><h3>Username</h3></label>
+                <input v-model="user.username" maxlength="39" type="text" />
+                <label><h3>Bio</h3></label>
+                <div class="textarea-wrapper">
+                  <textarea v-model="user.bio" maxlength="160"></textarea>
+                </div>
+                <label><h3>Private Email</h3></label>
+                <span>Only visible to moderators.</span>
+                <input v-model="user.email" maxlength="2048" type="email" />
+              </div>
+              <div class="button-group">
+                <button
+                  class="iconified-button"
+                  @click="
+                    isEditing = false
+                    user = JSON.parse(JSON.stringify($auth.user))
+                    previewImage = null
+                    icon = null
+                  "
+                >
+                  <CrossIcon /> Cancel
+                </button>
+                <button
+                  class="iconified-button brand-button"
+                  @click="saveChanges"
+                >
+                  <SaveIcon /> Save
+                </button>
+              </div>
+            </template>
+            <template v-else>
+              <div class="sidebar__item" style="display: none">
+                <Badge v-if="user.role === 'admin'" type="admin" color="red" />
+                <Badge
+                  v-else-if="user.role === 'moderator'"
+                  type="moderator"
+                  color="yellow"
+                />
+                <Badge v-else type="developer" color="green" />
+              </div>
+              <span v-if="user.bio" class="sidebar__item bio">{{
+                user.bio
+              }}</span>
+              <hr class="card-divider" />
+              <div class="primary-stat">
+                <DownloadIcon class="primary-stat__icon" aria-hidden="true" />
+                <div class="primary-stat__text">
+                  <span class="primary-stat__counter">{{
+                    sumDownloads()
+                  }}</span>
+                  <span class="primary-stat__label">downloads</span>
+                </div>
+              </div>
+              <div class="primary-stat">
+                <FollowsIcon class="primary-stat__icon" aria-hidden="true" />
+                <div class="primary-stat__text">
+                  <span class="primary-stat__counter">{{ sumFollows() }}</span>
+                  <span class="primary-stat__label">followers of projects</span>
+                </div>
+              </div>
+              <div class="stats-block__item secondary-stat">
+                <SunriseIcon class="secondary-stat__icon" aria-hidden="true" />
+                <span
+                  v-tooltip="
+                    $dayjs(user.created).format('MMMM D, YYYY [at] h:mm:ss A')
+                  "
+                  class="secondary-stat__text date"
+                >
+                  Joined {{ $dayjs(user.created).fromNow() }}
+                </span>
+              </div>
+              <hr class="card-divider" />
+              <div class="stats-block__item secondary-stat">
+                <UserIcon class="secondary-stat__icon" aria-hidden="true" />
+                <span class="secondary-stat__text">
+                  User ID: <CopyCode :text="user.id" />
+                </span>
+              </div>
+              <a
+                :href="githubUrl"
+                target="_blank"
+                class="sidebar__item github-button iconified-button"
+              >
+                <GitHubIcon aria-hidden="true" />
+                View GitHub profile
+              </a>
+            </template>
+          </aside>
+          <aside class="card sidebar">
+            <h3>Filter projects</h3>
+            <NavStack>
+              <NavStackItem link="" label="All"> </NavStackItem>
+              <NavStackItem
+                v-for="type in projectTypes"
+                :key="type"
+                :link="'?type=' + type"
+                :label="$formatProjectType(type) + 's'"
+              >
+              </NavStackItem>
+            </NavStack>
+          </aside>
+        </div>
+        <div class="normal-page__content">
+          <Advertisement
+            type="banner"
+            small-screen="square"
+            ethical-ads-small
+            ethical-ads-big
+          />
+          <div v-if="projects.length > 0">
+            <ProjectCard
+              v-for="project in $route.query.type !== undefined
+                ? projects.filter((x) => x.project_type === $route.query.type)
+                : projects"
+              :id="project.slug || project.id"
+              :key="project.id"
+              :name="project.title"
+              :description="project.description"
+              :created-at="project.published"
+              :updated-at="project.updated"
+              :downloads="project.downloads.toString()"
+              :follows="project.followers.toString()"
+              :icon-url="project.icon_url"
+              :categories="project.categories"
+              :client-side="project.client_side"
+              :server-side="project.server_side"
+              :status="
+                $auth.user &&
+                ($auth.user.role === 'admin' || $auth.user.role === 'moderator')
+                  ? project.status
+                  : null
+              "
+              :type="project.project_type"
+            >
+              <nuxt-link
+                v-if="$auth.user && $auth.user.id === user.id"
+                class="iconified-button"
+                :to="`/${project.project_type}/${
+                  project.slug ? project.slug : project.id
+                }/settings`"
+              >
+                <SettingsIcon />
+                Settings
+              </nuxt-link>
+            </ProjectCard>
+          </div>
+          <div v-else class="error">
+            <UpToDate class="icon" /><br />
+            <span v-if="$auth.user && $auth.user.id === user.id" class="text">
+              You don't have any projects.<br />
+              Would you like to
+              <a class="link" @click.prevent="$refs.modal_creation.show()">
+                create one </a
+              >?
+            </span>
+            <span v-else class="text">This user has no projects!</span>
+          </div>
         </div>
       </div>
     </div>
@@ -232,17 +249,18 @@ import ReportIcon from '~/assets/images/utils/report.svg?inline'
 import SunriseIcon from '~/assets/images/utils/sunrise.svg?inline'
 import DownloadIcon from '~/assets/images/utils/download.svg?inline'
 import SettingsIcon from '~/assets/images/utils/settings.svg?inline'
-import PlusIcon from '~/assets/images/utils/plus.svg?inline'
 import UpToDate from '~/assets/images/illustrations/up_to_date.svg?inline'
 import UserIcon from '~/assets/images/utils/user.svg?inline'
 import EditIcon from '~/assets/images/utils/edit.svg?inline'
-import HeartIcon from '~/assets/images/utils/heart.svg?inline'
+import FollowsIcon from '~/assets/images/utils/bell-ring.svg?inline'
+import ModrinthIcon from '~/assets/images/logo.svg?inline'
 import CrossIcon from '~/assets/images/utils/x.svg?inline'
 import SaveIcon from '~/assets/images/utils/save.svg?inline'
 import FileInput from '~/components/ui/FileInput'
 import ModalReport from '~/components/ui/ModalReport'
 import ModalCreation from '~/components/ui/ModalCreation'
-import NavRow from '~/components/ui/NavRow'
+import NavStack from '~/components/ui/NavStack'
+import NavStackItem from '~/components/ui/NavStackItem'
 import CopyCode from '~/components/ui/CopyCode'
 import Avatar from '~/components/ui/Avatar'
 
@@ -251,7 +269,8 @@ export default {
   components: {
     Avatar,
     CopyCode,
-    NavRow,
+    NavStack,
+    NavStackItem,
     ModalCreation,
     ModalReport,
     FileInput,
@@ -262,14 +281,14 @@ export default {
     ReportIcon,
     Badge,
     SettingsIcon,
-    PlusIcon,
     UpToDate,
     UserIcon,
     EditIcon,
     Advertisement,
-    HeartIcon,
+    FollowsIcon,
     CrossIcon,
     SaveIcon,
+    ModrinthIcon,
   },
   async asyncData(data) {
     try {
@@ -345,6 +364,10 @@ export default {
       isEditing: false,
       icon: null,
       previewImage: null,
+      decorated: false,
+      accentColor1: '#e9a04f',
+      accentColor2: '#e94b54',
+      bannerImageUrl: 'https://i.imgur.com/wPULBdE.png',
     }
   },
   head() {
@@ -472,6 +495,81 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+.sidebar {
+  padding-block: var(--spacing-card-lg);
+
+  h1 {
+    color: var(--color-text-dark);
+    margin: 0 0 var(--spacing-card-sm) 0;
+  }
+}
+
+.banner-header-outer {
+  margin: 0;
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+  padding: 3px;
+
+  &.decorated {
+    background: var(--color-contrast-bg);
+  }
+
+  .banner-header-inner {
+    background: transparent;
+    flex-grow: 1;
+    border-radius: 0.85rem;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .header-content {
+    display: flex;
+    flex-direction: row;
+    padding: var(--spacing-card-lg);
+    margin: 0 auto;
+    align-items: center;
+    gap: 1rem;
+    z-index: 4;
+
+    .title {
+      display: flex;
+      flex-direction: column;
+      h1 {
+        font-size: 2rem;
+        color: var(--color-heading);
+        margin: 0;
+      }
+      .role {
+        display: flex;
+        flex-direction: row;
+        gap: 0.25rem;
+        align-items: center;
+        font-weight: bold;
+        color: var(--color-brand);
+        margin-top: 0.25rem;
+      }
+    }
+
+    .avatar {
+    }
+  }
+
+  .header-banner {
+    position: absolute;
+    right: 0;
+    object-fit: cover;
+    width: 80%;
+    height: calc(6rem + 2 * var(--spacing-card-lg));
+    mask-image: linear-gradient(
+      to right,
+      rgba(0, 0, 0, 0) 10%,
+      rgba(0, 0, 0, 0.65) 100%
+    );
+    z-index: 3;
+  }
+}
+
 .user-header-wrapper {
   display: flex;
   margin: 0 auto -1.5rem;
@@ -513,10 +611,6 @@ export default {
   justify-content: space-between;
   flex-wrap: wrap;
   row-gap: 0.5rem;
-}
-
-.sidebar {
-  padding-top: 2.5rem;
 }
 
 .sidebar__item:not(:last-child) {

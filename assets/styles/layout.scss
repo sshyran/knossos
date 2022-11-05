@@ -37,6 +37,17 @@
   }
 }
 
+.stacked-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0 0.75rem;
+
+  .normal-page {
+    margin: 0;
+  }
+}
+
 .normal-page {
   display: flex;
   flex-direction: column;
@@ -48,6 +59,14 @@
 }
 
 @media (min-width: 1024px) {
+  .stacked-page {
+    margin: 0 auto;
+    max-width: 80rem;
+  }
+  .stacked-page .normal-page {
+    margin: unset;
+  }
+
   .normal-page {
     flex-direction: row;
     margin: 0 auto;
